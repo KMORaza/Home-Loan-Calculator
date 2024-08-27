@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Loan Calculator</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo:wght@400;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&display=swap">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.5.0/math.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: black; /* Black background for the entire page */
+            color: white; /* White text color for readability */
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #333; /* Dark gray background for the container */
+            padding: 20px;
+            border-radius: 10px;
+        }
+        h1 {
+            font-family: 'Exo', sans-serif;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: white; /* White text color for the heading */
+        }
+        label {
+            font-family: 'Exo 2', sans-serif;
+            display: block;
+            margin: 10px 0 5px;
+            color: white; /* White text color for labels */
+        }
+        input[type="number"] {
+            font-family: 'Exo', sans-serif;
+            margin: 10px 0;
+            padding: 10px;
+            width: 100%;
+            box-sizing: border-box;
+            background-color: black; /* Black background for textboxes */
+            color: white; /* White text color for textboxes */
+            border: 1px solid white; /* White border for textboxes */
+            border-radius: 5px;
+        }
+        input[type="button"] {
+            font-family: 'Exo', sans-serif;
+            margin: 10px 0;
+            padding: 10px;
+            width: 100%;
+            box-sizing: border-box;
+            background-color: #DC143C; /* Crimson color */
+            color: white; /* White text */
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 5px; /* Rounded corners */
+        }
+        input[type="button"]:hover {
+            background-color: #c8102e; /* Darker shade for hover effect */
+        }
+        .result {
+            font-family: 'Michroma', sans-serif;
+            font-size: 1.2em;
+            margin-top: 20px;
+        }
+        .chart-container {
+            margin-top: 30px;
+        }
+        canvas {
+            max-width: 100%;
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Home Loan Calculator</h1>
+        <label for="principal">Loan Amount ($):</label>
+        <input type="number" id="principal" placeholder="Enter loan amount">
+
+        <label for="rate">Annual Interest Rate (%):</label>
+        <input type="number" id="rate" step="0.01" placeholder="Enter annual interest rate">
+
+        <label for="years">Loan Term (years):</label>
+        <input type="number" id="years" placeholder="Enter loan term">
+
+        <input type="button" value="Calculate" onclick="calculateLoan()">
+
+        <div class="result" id="result"></div>
+
+        <div class="chart-container">
+            <canvas id="paymentChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        function calculateLoan() {
+            var principal = math.number(document.getElementById('principal').value);
+            var annualRate = math.number(document.getElementById('rate').value);
+            var years = math.number(document.getElementById('years').value);
+
+            if (isNaN(principal) || isNaN(annualRate) || isNaN(years) || principal <= 0 || annualRate <= 0 || years <= 0) {
+                document.getElementById('result').innerText = 'Please enter valid positive numbers for all fields.';
+                return;
+            }
+
+            var monthlyRate = math.divide(annualRate, 100 * 12);
+            var numberOfPayments = math.multiply(years, 12);
+            var monthlyPayment = math.divide(
+                math.multiply(principal, monthlyRate),
+                math.subtract(1, math.pow(math.add(1, monthlyRate), -numberOfPayments))
+            );
+            var totalPayment = math.multiply(monthlyPayment, numberOfPayments);
+            var totalInterest = math.subtract(totalPayment, principal);
+
+            document.getElementById('result').innerText = 'Monthly Payment: $' + monthlyPayment.toFixed(2);
+
+            var labels = [];
+            var principalPayments = [];
+            var interestPayments = [];
+            var remainingBalance = principal;
+
+            for (var i = 1; i <= numberOfPayments; i++) {
+                var interestPayment = math.multiply(remainingBalance, monthlyRate);
+                var principalPayment = math.subtract(monthlyPayment, interestPayment);
+                remainingBalance = math.subtract(remainingBalance, principalPayment);
+                labels.push('Month ' + i);
+                principalPayments.push(principalPayment);
+                interestPayments.push(interestPayment);
+            }
+
+            var ctx = document.getElementById('paymentChart').getContext('2d');
+            var paymentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Principal Payment',
+                            data: principalPayments,
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            fill: false,
+                        },
+                        {
+                            label: 'Interest Payment',
+                            data: interestPayments,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            fill: false,
+                        }
+                    ]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Month'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Amount ($)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
